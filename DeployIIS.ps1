@@ -5,25 +5,31 @@ Set-Location IIS:
 $siteName = "SolutionPub"
 $appPoolName = $siteName
 $protocol = "http"
-$port = "9941"
+$port = "9975"
 $projectPath = "C:\dev\SolutionPub\"
 $binding = "*:" + $port + ":"
 
 Write-Host -ForegroundColor DarkGreen "Deploying $siteName to local IIS"
 
 
-If(Get-Item IIS:\AppPools\$appPoolName -EA 0){
-    Write-Host -ForegroundColor DarkRed "$appPoolName ApplicationPool already Exists, Skipping..."
+Try
+{
+    Write-Host -ForegroundColor DarkGreen "Creating ApplicationPool: $appPoolName..."
+    New-Item IIS:\AppPools\$appPoolName -ea Stop
+    Write-Host -ForegroundColor DarkGreen "Created ApplicationPool: $appPoolName..."
 }
-Else {
-    New-Item IIS:\AppPools\$appPoolName
+Catch {
+    Write-Host -ForegroundColor DarkRed "ApplicationPool: $appPoolName already exists, Skipping..."
 }
 
-If(Get-Item IIS:\Sites\$siteName -EA 0) {
-    Write-Host -ForegroundColor DarkRed "$siteName Site already Exists, Skipping..."
+
+Try {
+    Write-Host -ForegroundColor DarkGreen "Creating WebSite: $siteName..."
+    New-Item IIS:\Sites\$siteName -bindings @{protocol=$protocol;bindingInformation=$binding} -physicalPath $projectPath -applicationPool $appPoolName -ea Stop
+    Write-Host -ForegroundColor DarkGreen "Created WebSite: $siteName..."
 }
-Else {
-    New-Item IIS:\Sites\$siteName -bindings @{protocol=$protocol;bindingInformation=$binding} -physicalPath $projectPath -applicationPool $appPoolName
+Catch {
+    Write-Host -ForegroundColor DarkRed "WebSite: $siteName already exists, Skipping..."
 }
 
 Write-Host -ForegroundColor DarkGreen "Restarting IIS, W3SVC and WAS(Windows Activation Services)"
@@ -31,7 +37,12 @@ Write-Host -ForegroundColor DarkGreen "Restarting IIS, W3SVC and WAS(Windows Act
     IISRESET /Restart
     Restart-Service W3SVC,WAS -Force
 
+    #Disabling Anonymous Authentication
+    Write-Host -ForegroundColor DarkGreen "Disabling Anonymous Authentication"
+    Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name Enabled -Value False
+    Write-Host -ForegroundColor DarkGreen "Disabled Anonymous Authentication"
 
-    Write-Host -ForegroundColor DarkGreen "Enabling Anonymous Authentication"
-    Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name Enabled -Value True
-    Write-Host -ForegroundColor DarkGreen "Enabled Anonymous Authentication"
+    #Enabling Windows Authentication
+    Write-Host -ForegroundColor DarkGreen "Enabling Windows Authentication"
+    Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name Enabled -Value True
+    Write-Host -ForegroundColor DarkGreen "Enabled Windows Authentication"
