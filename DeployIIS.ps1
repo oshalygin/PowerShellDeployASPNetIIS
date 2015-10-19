@@ -40,8 +40,6 @@ $deploymentScript = {
     }
     Else {
         Write-Host -ForegroundColor DarkRed "WebSite: $siteName already exists, Skipping..."
-        Write-Host -ForegroundColor DarkRed "Exiting Deployment Script..."
-        exit
     }
 
     Write-Host -ForegroundColor DarkGreen "Restarting IIS, W3SVC and WAS(Windows Activation Services)"
@@ -51,7 +49,7 @@ $deploymentScript = {
 
         #Disabling Anonymous Authentication
         Write-Host -ForegroundColor DarkGreen "Disabling Anonymous Authentication"
-        Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name Enabled -Value False
+        Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/anonymousAuthentication" -Name Enabled -Value True
         Write-Host -ForegroundColor DarkGreen "Disabled Anonymous Authentication"
 
         #Enabling Windows Authentication
