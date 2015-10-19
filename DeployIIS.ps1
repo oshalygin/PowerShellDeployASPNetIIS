@@ -1,21 +1,49 @@
+$port = 86
+$numberOfConnectionAttempts = 5
+$siteName = "DerpLord"
 
-$siteName = "TechieJS"
-$session = New-PSSession
+
+Function ConfirmSiteIsActive ([int]$port, [int]$numberOfAttempts) {
+
+    $failedConnection = $true;
+    For($i = 1; $i -le $numberOfAttempts) {
+        $connectionState = Test-NetConnection localhost -Port $port
+
+        If($connectionState.TcpTestSucceeded -eq "True") {
+            $i = $numberOfAttempts;
+            Write-Host -ForegroundColor DarkGreen "Successfully Connected to http://localhost:$port"
+            $failedConnection = $false;
+        }
+        Else {
+        Write-Host -ForegroundColor DarkRed "Could not establish a connection to http://localhost:$port.  Trying again..."
+        }
+        $i = $i + 1;
+    }
+
+    If($failedConnection -eq "False") {
+        Write-Host -ForegroundColor DarkRed "Attempted $numberOfAttempts times and could not establish a connection to http://localhost:$port"
+    }
+
+
+}
 
 $deploymentScript = {
 
-    Param($siteName)
+    Param($siteName, $port)
 
     Import-Module WebAdministration
 
     Set-Location IIS:
 
+    Write-Host $port
+    Write-Host $siteName
+
     #$siteName = "SolutionPub"
     $appPoolName = $siteName
     $protocol = "http"
-    $port = "9000"
     $projectPath = "C:\dev\TechieJS\TN6\TN.Web\"
     $binding = "*:" + $port + ":"
+
 
     Write-Host -ForegroundColor DarkGreen "Deploying $siteName to local IIS"
 
@@ -56,6 +84,12 @@ $deploymentScript = {
         Write-Host -ForegroundColor DarkGreen "Enabling Windows Authentication"
         Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name Enabled -Value True
         Write-Host -ForegroundColor DarkGreen "Enabled Windows Authentication"
+
 }
 
-Invoke-Command -Session $session -ScriptBlock $deploymentScript -ArgumentList $siteName
+$session = New-PSSession
+
+Invoke-Command -Session $session -ScriptBlock $deploymentScript -ArgumentList $siteName, $port
+
+#Test the Connection to the newly created IIS WebSite
+ConfirmSiteIsActive $port $numberOfConnectionAttempts
